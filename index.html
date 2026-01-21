@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Punch-Out!! NES</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        /* Game Container Responsif */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Game */
+        #game-header {
+            height: 50px;
+            background: linear-gradient(to bottom, #8b0000, #660000);
+            border-bottom: 3px solid #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .game-title {
+            font-size: clamp(16px, 4vw, 24px);
+            color: #ffd700;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        /* Game Area Responsif */
+        #game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Ring Area Responsif */
+        #ring-area {
+            flex: 1;
+            position: relative;
+            background: #111;
+            overflow: hidden;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 10px;
+        }
+
+        #ring {
+            position: relative;
+            width: 90%;
+            max-width: 350px;
+            height: 60%;
+            max-height: 250px;
+            margin: 0 auto;
+            background: repeating-linear-gradient(
+                45deg,
+                #333,
+                #333 10px,
+                #222 10px,
+                #222 20px
+            );
+            border: 3px solid #ffd700;
+            border-radius: 5px;
+            transform: perspective(400px) rotateX(15deg);
+            transform-origin: bottom;
+        }
+
+        /* Karakter Responsif */
+        #player {
+            position: absolute;
+            width: clamp(30px, 8vw, 50px);
+            height: clamp(60px, 15vh, 100px);
+            bottom: 20%;
+            left: 25%;
+            z-index: 10;
+            transition: left 0.2s, transform 0.1s;
+        }
+
+        .player-body {
+            width: 100%;
+            height: 100%;
+            background: #0000ff;
+            position: relative;
+            border: 2px solid #0066cc;
+            border-radius: 5px;
+        }
+
+        .player-head {
+            width: 80%;
+            height: 35px;
+            background: #ffcc99;
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 2px solid #cc9966;
+            border-radius: 50%;
+        }
+
+        .player-glove {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border: 2px solid #cc0000;
+            border-radius: 50%;
+        }
+
+        .glove-left {
+            top: 40%;
+            left: -15px;
+        }
+
+        .glove-right {
+            top: 40%;
+            right: -15px;
+        }
+
+        #boss {
+            position: absolute;
+            width: clamp(40px, 10vw, 60px);
+            height: clamp(80px, 18vh, 120px);
+            bottom: 20%;
+            right: 25%;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+
+        .boss-body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border-radius: 5px;
+        }
+
+        .boss-head {
+            width: 80%;
+            height: 40px;
+            background: #ff9966;
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 2px solid #cc6633;
+            border-radius: 50%;
+        }
+
+        /* HUD Responsif */
+        #hud {
+            height: clamp(100px, 25vh, 150px);
+            background: #111;
+            border-top: 3px solid #8b0000;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        .health-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .health-wrapper {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .health-label {
+            color: #fff;
+            font-size: clamp(10px, 2.5vw, 14px);
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .health-bar {
+            height: 16px;
+            background: #333;
+            border: 2px solid #555;
+            overflow: hidden;
+            border-radius: 3px;
+        }
+
+        .health-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        #player-health {
+            background: linear-gradient(to right, #00ff00, #00cc00);
+        }
+
+        #boss-health {
+            background: linear-gradient(to right, #ff9900, #ff6600);
+        }
+
+        .info-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .round-info, .time-info {
+            color: #ffd700;
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: bold;
+        }
+
+        .ko-counter {
+            color: #ff0000;
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: bold;
+        }
+
+        /* Kontrol Responsif */
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 6px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .control-btn {
+            background: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: clamp(10px, 2.5vw, 14px);
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 5px;
+            user-select: none;
+            min-height: 35px;
+            padding: 2px;
+            word-break: break-word;
+            line-height: 1.1;
+        }
+
+        .control-btn:active {
+            background: #555;
+            border-color: #ffd700;
+            transform: scale(0.95);
+        }
+
+        .punch-btn { background: #8b0000; border-color: #ff3333; }
+        .block-btn { background: #006600; border-color: #00cc00; }
+        .dodge-btn { background: #000066; border-color: #0066cc; }
+
+        /* Layar Menu Responsif */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            background: #000;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        #title-screen {
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, #8b0000 2px, #8b0000 4px);
+        }
+
+        .title-logo {
+            font-size: clamp(24px, 8vw, 48px);
+            color: #ffd700;
+            text-shadow: 3px 3px 0 #8b0000;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+
+        .nes-button {
+            background: #8b0000;
+            color: #fff;
+            border: 3px solid #ffd700;
+            padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 30px);
+            font-size: clamp(14px, 4vw, 20px);
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            margin: 10px;
+            text-transform: uppercase;
+            border-radius: 5px;
+            min-width: 150px;
+            max-width: 80%;
+        }
+
+        .nes-button:active {
+            background: #ff0000;
+            transform: scale(0.95);
+        }
+
+        /* Fighter Select Responsif */
+        #select-screen {
+            background: #000;
+        }
+
+        .select-title {
+            color: #ffd700;
+            font-size: clamp(18px, 5vw, 24px);
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0 #8b0000;
+        }
+
+        .fighter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+
+        .fighter-card {
+            background: #222;
+            border: 3px solid #444;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .fighter-card.selected {
+            border-color: #ffd700;
+            background: #333;
+        }
+
+        .fighter-card:active {
+            transform: scale(0.95);
+        }
+
+        .fighter-name {
+            color: #fff;
+            font-size: clamp(12px, 3vw, 16px);
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .fighter-stats {
+            color: #888;
+            font-size: clamp(10px, 2.5vw, 12px);
+            line-height: 1.2;
+        }
+
+        /* Message Box Responsif */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            border: 4px solid #ffd700;
+            padding: clamp(15px, 4vw, 20px);
+            z-index: 1000;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message-text {
+            color: #ffd700;
+            font-size: clamp(16px, 4vw, 24px);
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+
+        /* Efek Visual Responsif */
+        .punch-effect {
+            position: absolute;
+            width: clamp(30px, 8vw, 50px);
+            height: clamp(30px, 8vw, 50px);
+            background: #ffff00;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: punchEffect 0.3s;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @keyframes punchEffect {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .hit-effect {
+            animation: hitShake 0.3s;
+        }
+
+        @keyframes hitShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .ko-effect {
+            animation: koFall 1s forwards;
+        }
+
+        @keyframes koFall {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100px) rotate(90deg); opacity: 0; }
+        }
+
+        /* Level Progress */
+        #level-progress {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.7);
+            z-index: 50;
+            text-align: center;
+            color: #ffd700;
+            font-size: clamp(12px, 3vw, 16px);
+        }
+
+        /* Responsif untuk Landscape */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #game-header {
+                height: 40px;
+            }
+            
+            #ring-area {
+                padding: 5px;
+            }
+            
+            #ring {
+                height: 70%;
+            }
+            
+            #hud {
+                height: 80px;
+                flex-direction: row;
+                padding: 5px;
+            }
+            
+            .health-container {
+                flex-direction: column;
+                width: 30%;
+                margin-bottom: 0;
+                margin-right: 10px;
+            }
+            
+            .info-container {
+                flex-direction: column;
+                width: 20%;
+                margin-bottom: 0;
+                margin-right: 10px;
+            }
+            
+            #controls {
+                flex: 1;
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+            }
+            
+            .control-btn {
+                font-size: 10px;
+                min-height: 25px;
+            }
+            
+            #player, #boss {
+                bottom: 25%;
+            }
+        }
+
+        /* Responsif untuk HP Kecil */
+        @media (max-width: 320px) {
+            .fighter-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            #controls {
+                gap: 4px;
+            }
+            
+            .control-btn {
+                font-size: 9px;
+            }
+        }
+
+        /* Untuk HP Besar/Tablet */
+        @media (min-width: 768px) {
+            #game-container {
+                max-width: 768px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Header -->
+        <div id="game-header">
+            <div class="game-title">PUNCH-OUT!! NES</div>
+        </div>
+
+        <!-- Game Area -->
+        <div id="game-area">
+            <!-- Level Progress -->
+            <div id="level-progress" style="display: none;">
+                LEVEL 1/3 - KO: <span id="ko-count">0</span>/3
+            </div>
+            
+            <!-- Ring Area -->
+            <div id="ring-area">
+                <div id="ring">
+                    <!-- Player -->
+                    <div id="player">
+                        <div class="player-body">
+                            <div class="player-head"></div>
+                            <div class="player-glove glove-left"></div>
+                            <div class="player-glove glove-right"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Boss -->
+                    <div id="boss"></div>
+                </div>
+            </div>
+
+            <!-- HUD -->
+            <div id="hud">
+                <div class="health-container">
+                    <div class="health-wrapper">
+                        <div class="health-label">LITTLE MAC</div>
+                        <div class="health-bar">
+                            <div id="player-health" class="health-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="health-wrapper">
+                        <div class="health-label" id="boss-name">OPPONENT</div>
+                        <div class="health-bar">
+                            <div id="boss-health" class="health-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-container">
+                    <div class="round-info" id="round-text">ROUND 1</div>
+                    <div class="time-info" id="time-text">02:30</div>
+                    <div class="ko-counter" id="ko-counter">KO: 0</div>
+                </div>
+
+                <div id="controls">
+                    <button class="control-btn dodge-btn" id="dodge-left">← DODGE</button>
+                    <button class="control-btn punch-btn" id="jab">JAB</button>
+                    <button class="control-btn dodge-btn" id="dodge-right">DODGE →</button>
+                    <button class="control-btn block-btn" id="block">BLOCK</button>
+                    <button class="control-btn punch-btn" id="hook">HOOK</button>
+                    <button class="control-btn punch-btn" id="uppercut">UPPERCUT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen">
+            <div class="title-logo">PUNCH-OUT!!<br>NES EDITION</div>
+            <div style="color: #ccc; margin-bottom: 20px; font-size: clamp(12px, 3vw, 16px);">
+                TOUCH SCREEN CONTROLS<br>
+                ANDROID COMPATIBLE
+            </div>
+            <button class="nes-button" id="start-btn">START GAME</button>
+            <div style="margin-top: 30px; color: #666; font-size: clamp(10px, 2.5vw, 12px);">
+                3 KOs TO WIN EACH LEVEL
+            </div>
+        </div>
+
+        <!-- Select Screen -->
+        <div id="select-screen" class="screen">
+            <div class="select-title">CHOOSE OPPONENT</div>
+            <div class="fighter-grid">
+                <div class="fighter-card" data-boss="glass-joe">
+                    <div class="fighter-name">GLASS JOE</div>
+                    <div class="fighter-stats">Health: 60<br>KO Needed: 1<br>★☆☆☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="von-kaiser">
+                    <div class="fighter-name">VON KAISER</div>
+                    <div class="fighter-stats">Health: 80<br>KO Needed: 2<br>★★☆☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="king-hippo">
+                    <div class="fighter-name">KING HIPPO</div>
+                    <div class="fighter-stats">Health: 100<br>KO Needed: 3<br>★★★☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="mike-tyson">
+                    <div class="fighter-name">MIKE TYSON</div>
+                    <div class="fighter-stats">Health: 120<br>KO Needed: 3<br>★★★★★</div>
+                </div>
+            </div>
+            <button class="nes-button" id="fight-btn">FIGHT!</button>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box">
+            <div class="message-text" id="message-text"></div>
+            <button class="nes-button" id="continue-btn">CONTINUE</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== INISIALISASI GAME ==========
+        let currentScreen = 'title';
+        let selectedBoss = null;
+        let gameRunning = false;
+        let gameLoopInterval = null;
+        
+        // Data Game State
+        const gameState = {
+            round: 1,
+            time: 150,
+            playerHealth: 100,
+            bossHealth: 100,
+            score: 0,
+            isBlocking: false,
+            bossKOCount: 0,
+            level: 1,
+            totalKOs: 0,
+            maxLevels: 4
+        };
+        
+        // Data Bos dengan KO yang dibutuhkan
+        const bosses = [
+            { // Level 1
+                id: 'glass-joe',
+                name: 'GLASS JOE',
+                maxHealth: 60,
+                color: '#ff6666',
+                speed: 0.8,
+                attacks: ['jab'],
+                difficulty: 1,
+                kosNeeded: 1
+            },
+            { // Level 2
+                id: 'von-kaiser',
+                
